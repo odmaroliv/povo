@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "900906008940",
+    "project_id": "povo-19101",
+    "storage_bucket": "povo-19101.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:900906008940:android:6024c31c4ba5f53e8f3349",
+        "android_client_info": {
+          "package_name": "com.example.povo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWtLhygsjxC6aAvrlqMue3Gy8HmrMK4kA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
