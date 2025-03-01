@@ -413,6 +413,11 @@ class EventController extends GetxController {
     }
   }
 
+  // Navegar a la pantalla de subida de fotos
+  void goToUploadPhoto(String eventId) {
+    Get.toNamed(AppRoutes.UPLOAD_PHOTO, arguments: {'eventId': eventId});
+  }
+
   // Clear event form
   void _clearEventForm() {
     nameController.clear();

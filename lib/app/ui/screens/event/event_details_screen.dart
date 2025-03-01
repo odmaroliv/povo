@@ -320,7 +320,7 @@ class EventDetailsScreen extends GetView<EventController> {
 
                 const SizedBox(height: 32),
 
-                // Action Buttons
+                // Botones de acción con paleta uniforme
                 Row(
                   children: [
                     Expanded(
@@ -328,6 +328,8 @@ class EventDetailsScreen extends GetView<EventController> {
                         text: 'Tomar fotos',
                         icon: Icons.camera_alt,
                         onPressed: () => controller.goToCamera(event.id),
+                        backgroundColor: ColorConstants.primaryColor,
+                        // iconColor y textColor se dejarán en blanco por defecto para un buen contraste
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -336,22 +338,42 @@ class EventDetailsScreen extends GetView<EventController> {
                         text: 'Ver galería',
                         icon: Icons.photo_library,
                         onPressed: () => controller.goToGallery(event.id),
-                        backgroundColor: Colors.teal,
+                        backgroundColor: ColorConstants.primaryColor,
                       ),
                     ),
                   ],
                 ),
-
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomButton(
+                        text: 'Subir fotos',
+                        icon: Icons.file_upload,
+                        onPressed: () => controller.goToUploadPhoto(event.id),
+                        backgroundColor: ColorConstants.secondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
                 if (isHost && event.requiresModeration) ...[
                   const SizedBox(height: 16),
-                  CustomButton(
-                    text: 'Moderar fotos',
-                    icon: Icons.admin_panel_settings,
-                    onPressed: () => controller.goToModeration(event.id),
-                    backgroundColor: Colors.amber[800]!,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomButton(
+                          text: 'Moderar fotos',
+                          icon: Icons.admin_panel_settings,
+                          onPressed: () => controller.goToModeration(event.id),
+                          backgroundColor: ColorConstants.warningColor,
+                          // Podrías usar un iconColor distinto, por ejemplo, para darle mayor énfasis.
+                          iconColor: Colors.black,
+                          textColor: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-
                 const SizedBox(height: 32),
 
                 // Moderation Status

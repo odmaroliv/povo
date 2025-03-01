@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:povo/app/data/models/photo_model.dart';
 import 'package:povo/app/services/camera_service.dart';
 import 'package:povo/app/services/firebase_service.dart';
 import 'package:povo/app/services/storage_service.dart';
+import 'package:uuid/uuid.dart';
 
 class PhotoRepository {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
@@ -244,6 +247,84 @@ class PhotoRepository {
     } catch (e) {
       print('Error adding caption: $e');
       rethrow;
+    }
+  }
+
+  /// Upload a video
+  Future<PhotoModel> uploadVideo({
+    required String videoPath,
+    required String eventId,
+    required String userId,
+    String? caption,
+    List<String> tags = const [],
+    Map<String, dynamic>? metadata,
+    Map<String, dynamic>? filter,
+  }) async {
+    try {
+      // Generate a unique ID for the video
+      final docRef = photosCollection.doc();
+      final videoId = docRef.id;
+
+      // Upload the video and generate a thumbnail (you might need a different thumbnail approach)
+      final videoFile = File(videoPath);
+      final thumbnailPath = await _generateVideoThumbnail(videoPath);
+
+      // Upload files to storage
+      final videoFileName = 'event_$eventId/${const Uuid().v4()}.mp4';
+      final thumbnailFileName = 'event_$eventId/thumb_${const Uuid().v4()}.jpg';
+
+      final videoUrl = await _storageService.uploadPhotoToPath(
+          videoPath, 'videos/$videoFileName');
+      String thumbnailUrl = '';
+
+      if (thumbnailPath.isNotEmpty) {
+        thumbnailUrl = await _storageService.uploadPhotoToPath(
+            thumbnailPath, 'thumbnails/$thumbnailFileName');
+      } else {
+        // Use a default video thumbnail if generation failed
+        thumbnailUrl = 'default_video_thumbnail_url';
+      }
+
+      // Create the photo/video model
+      final video = PhotoModel(
+        id: videoId,
+        eventId: eventId,
+        userId: userId,
+        url: videoUrl,
+        thumbnailUrl: thumbnailUrl,
+        status: 'pending', // Default status for new videos
+        capturedAt: DateTime.now(),
+        uploadedAt: DateTime.now(),
+        caption: caption,
+        tags: tags,
+        metadata: metadata ?? {'isVideo': true},
+        filter: filter,
+      );
+
+      // Save to Firestore
+      await docRef.set(video.toJson());
+
+      // Update the event document to include this video ID
+      await _firebaseService.eventsCollection.doc(eventId).update({
+        'photoIds': FieldValue.arrayUnion([videoId]),
+      });
+
+      return video;
+    } catch (e) {
+      print('Error uploading video: $e');
+      rethrow;
+    }
+  }
+
+  /// Generate a thumbnail from video
+  Future<String> _generateVideoThumbnail(String videoPath) async {
+    try {
+      // In a real implementation, you would use a package like video_thumbnail
+      // For now, we'll return an empty string
+      return '';
+    } catch (e) {
+      print('Error generating video thumbnail: $e');
+      return '';
     }
   }
 }

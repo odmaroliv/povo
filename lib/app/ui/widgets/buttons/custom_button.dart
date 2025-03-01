@@ -5,6 +5,7 @@ class CustomButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final IconData? icon;
+  final Color? iconColor;
   final double? width;
   final Color backgroundColor;
   final Color textColor;
@@ -15,6 +16,7 @@ class CustomButton extends StatelessWidget {
     this.onPressed,
     this.isLoading = false,
     this.icon,
+    this.iconColor,
     this.width,
     this.backgroundColor = const Color(0xFF6200EE), // Default to primary color
     this.textColor = Colors.white,
@@ -22,6 +24,7 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color effectiveIconColor = iconColor ?? Colors.white;
     return SizedBox(
       width: width,
       child: ElevatedButton(
@@ -53,8 +56,13 @@ class CustomButton extends StatelessWidget {
                   strokeWidth: 3,
                 ),
               )
-            else if (icon != null)
-              Icon(icon),
+            else if (icon != null) ...[
+              Icon(
+                icon,
+                color: effectiveIconColor,
+              ),
+              const SizedBox(width: 8),
+            ],
             if ((isLoading || icon != null) && text.isNotEmpty)
               const SizedBox(width: 8),
             if (text.isNotEmpty)

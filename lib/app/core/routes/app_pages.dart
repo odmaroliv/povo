@@ -4,10 +4,13 @@ import 'package:povo/app/bindings/camera_binding.dart';
 import 'package:povo/app/bindings/event_binding.dart';
 import 'package:povo/app/bindings/home_binding.dart';
 import 'package:povo/app/bindings/moderator_binding.dart';
+import 'package:povo/app/bindings/upload_photo_binding.dart';
 import 'package:povo/app/core/routes/app_routes.dart';
 import 'package:povo/app/ui/screens/auth/login_screen.dart';
 import 'package:povo/app/ui/screens/auth/signup_screen.dart';
 import 'package:povo/app/ui/screens/camera/camera_screen.dart';
+import 'package:povo/app/ui/screens/camera/photo_preview_screen.dart';
+import 'package:povo/app/ui/screens/camera/upload_photo_screen.dart';
 import 'package:povo/app/ui/screens/event/create_event_screen.dart';
 import 'package:povo/app/ui/screens/event/event_details_screen.dart';
 import 'package:povo/app/ui/screens/event/join_event_screen.dart';
@@ -72,6 +75,11 @@ class AppPages {
       name: AppRoutes.MODERATION,
       page: () => ModerationScreen(),
       binding: ModeratorBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.UPLOAD_PHOTO,
+      page: () => UploadPhotoScreen(),
+      binding: UploadPhotoBinding(),
     ),
   ];
 }
