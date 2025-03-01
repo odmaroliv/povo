@@ -9,7 +9,7 @@ import 'package:povo/app/services/auth_service.dart';
 import 'package:povo/app/services/notification_service.dart';
 
 class AuthController extends GetxController {
-  final AuthService _authService = Get.find<AuthService>();
+  late final AuthService _authService;
   final UserRepository _userRepository = Get.find<UserRepository>();
   final NotificationService _notificationService =
       Get.find<NotificationService>();
@@ -38,7 +38,7 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-
+    _authService = Get.find<AuthService>();
     // Set up listeners for text fields
     emailController.addListener(_validateEmail);
     passwordController.addListener(_validatePassword);
@@ -61,7 +61,7 @@ class AuthController extends GetxController {
 
   // Validation methods
   void _validateEmail() {
-    isValidEmail.value = Validators.isValidEmail(emailController.text);
+    isValidEmail.value = Validators.isValidEmail(emailController.text.trim());
   }
 
   void _validatePassword() {

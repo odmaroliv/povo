@@ -44,36 +44,35 @@ class NotificationService extends GetxService {
   }
 
   Future<void> _initializeLocalNotifications() async {
-    // Initialize the plugin
+    // Configuración para Android
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    // Configuración para iOS (sin callback)
     final DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
       requestSoundPermission: false,
       requestBadgePermission: false,
       requestAlertPermission: false,
-      onDidReceiveLocalNotification:
-          (int id, String? title, String? body, String? payload) async {
-        // Handle iOS foreground notification
-      },
     );
 
+    // Configuración combinada para ambas plataformas
     final InitializationSettings initializationSettings =
         InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
 
+    // Inicializar el plugin y pasar el callback correspondiente
     await _localNotifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
+        // Manejar la acción al tocar la notificación
         _handleNotificationTap(response.payload);
       },
     );
 
-    // Create notification channel
+    // Crear canal de notificaciones (para Android)
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()

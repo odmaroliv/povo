@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:povo/app/controllers/camera_controller.dart';
 import 'package:povo/app/core/constants/color_constants.dart';
+import 'package:povo/app/core/routes/app_routes.dart';
 import 'package:povo/app/ui/widgets/camera/camera_controls.dart';
 import 'package:povo/app/ui/widgets/camera/filter_selector.dart';
 import 'package:povo/app/ui/widgets/common/loading_widget.dart';
 import 'package:povo/app/ui/widgets/common/error_widget.dart';
 
 class CameraScreen extends GetView<CameraController> {
+  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,77 +33,6 @@ class CameraScreen extends GetView<CameraController> {
                 child: _buildCameraPreview(),
               ),
 
-              // Top Bar with Close Button and Flash Toggle
-              Positioned(
-                top: 16,
-                left: 16,
-                right: 16,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                      onPressed: () => Get.back(),
-                    ),
-                    Obx(() => IconButton(
-                          icon: Icon(
-                            controller.isFlashOn.value
-                                ? Icons.flash_on
-                                : Icons.flash_off,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                          onPressed: controller.toggleFlash,
-                        )),
-                  ],
-                ),
-              ),
-
-              // Bottom Controls (Capture Button, Switch Camera, etc.)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.7),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Filter Selector
-                      FilterSelector(
-                        filters: controller.availableFilters,
-                        currentFilter: controller.currentFilter.value,
-                        onFilterSelected: controller.selectFilter,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Camera Controls (Capture Button, Switch Camera)
-                      CameraControls(
-                        onCapture: controller.isCapturing.value
-                            ? null
-                            : controller.capturePhoto,
-                        onSwitchCamera: controller.toggleCamera,
-                        isCapturing: controller.isCapturing.value,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               // Loading Indicator
               if (controller.isLoading.value)
                 const Positioned.fill(
@@ -115,67 +46,147 @@ class CameraScreen extends GetView<CameraController> {
   }
 
   Widget _buildCameraPreview() {
-    return Obx(() {
-      if (controller.cameraState.value == null) {
-        return Container(
-          color: Colors.black,
-          child: const Center(
-            child: Text(
-              'Inicializando cámara...',
-              style: TextStyle(color: Colors.white),
+    return CameraAwesomeBuilder.awesome(
+      saveConfig: SaveConfig.photo(),
+      sensorConfig: controller.getCameraConfig(),
+      previewFit: CameraPreviewFit.cover,
+      onMediaCaptureEvent: (event) {
+        if (event.status == MediaCaptureStatus.success && event.isPicture) {
+          event.captureRequest.when(
+            single: (single) {
+              if (single.file != null) {
+                controller.capturedImagePath.value = single.file!.path;
+                Get.toNamed(AppRoutes.PHOTO_PREVIEW);
+              }
+            },
+            multiple: (_) {},
+          );
+        }
+      },
+      imageAnalysisConfig: AnalysisConfig(
+        androidOptions: const AndroidAnalysisOptions.nv21(
+          width: 250,
+        ),
+        autoStart: true,
+      ),
+      topActionsBuilder: (state) {
+        // Asignar el estado de la cámara
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.updateCameraState(state);
+        });
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.close,
+                color: Colors.white,
+                size: 30,
+              ),
+              onPressed: () => Get.back(),
             ),
-          ),
+            Obx(() => IconButton(
+                  icon: Icon(
+                    controller.isFlashOn.value
+                        ? Icons.flash_on
+                        : Icons.flash_off,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                  onPressed: controller.toggleFlash,
+                )),
+          ],
         );
-      }
+      },
+      bottomActionsBuilder: (state) {
+        return Column(
+          children: [
+            // Filter Selector
+            FilterSelector(
+              filters: controller.availableFilters,
+              currentFilter: controller.currentFilter.value,
+              onFilterSelected: controller.selectFilter,
+            ),
 
-      return CameraAwesomeBuilder.awesome(
-        // Configuración básica
-        saveConfig: SaveConfig.photo(),
+            const SizedBox(height: 20),
 
-        // Configuración del sensor
-        sensorConfig: controller.getCameraConfig(),
+            // Camera Controls (Capture Button, Switch Camera)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Switch Camera Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.flip_camera_ios,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                  onPressed: () {
+                    controller.toggleCamera();
+                    state.when(
+                      onPhotoMode: (photoState) {
+                        // Usar el método switchCameraSensor correctamente con parámetros nombrados
+                        photoState.switchCameraSensor();
+                      },
+                      onVideoMode: (videoState) {
+                        videoState.switchCameraSensor();
+                      },
+                      onVideoRecordingMode: (_) {},
+                      onPreparingCamera: (_) {},
+                    );
+                  },
+                ),
 
-        // Ajuste del preview
-        previewFit: CameraPreviewFit.cover,
+                // Capture Button
+                GestureDetector(
+                  onTap: controller.isCapturing.value
+                      ? null
+                      : () {
+                          controller.isCapturing.value = true;
+                          state.when(
+                            onPhotoMode: (photoState) async {
+                              try {
+                                await photoState.takePhoto();
+                              } finally {
+                                controller.isCapturing.value = false;
+                              }
+                            },
+                            onVideoMode: (_) {},
+                            onVideoRecordingMode: (_) {},
+                            onPreparingCamera: (_) {},
+                          );
+                        },
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.8),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 3,
+                      ),
+                    ),
+                    child: controller.isCapturing.value
+                        ? const CircularProgressIndicator(
+                            color: Colors.black,
+                          )
+                        : const SizedBox(),
+                  ),
+                ),
 
-        // Configuración para análisis de imágenes
-        imageAnalysisConfig: AnalysisConfig(
-          androidOptions: const AndroidAnalysisOptions.nv21(
-            width: 250,
-          ),
-          autoStart: true,
-        ),
-        onImageForAnalysis: (image) async {
-          // Aquí podrías implementar análisis en tiempo real con ML
-          return;
-        },
-
-        // Filtro actual
-        // Nota: Ahora se llama 'filter' sin problemas
-        //TODO Revisar el filtro
-        // filter: controller.currentFilter.value,
-
-        // Indicador de progreso
-        progressIndicator: CircularProgressIndicator(
-          valueColor:
-              AlwaysStoppedAnimation<Color>(ColorConstants.primaryColor),
-        ),
-
-        // Eventos de captura de medios
-        onMediaCaptureEvent: (event) {
-          // Puedes manejar eventos de captura aquí
-          if (event.status == MediaCaptureStatus.success) {
-            // Manejo de foto tomada con éxito
-          }
-        },
-
-        // Theme - adaptar según la documentación actual
-        theme: AwesomeTheme(
-          // Solo usar los parámetros que existen en la versión actual
-          bottomActionsBackgroundColor: Colors.transparent,
-        ),
-      );
-    });
+                // Placeholder para mantener centrado el botón de captura
+                const SizedBox(width: 50, height: 50),
+              ],
+            ),
+          ],
+        );
+      },
+      theme: AwesomeTheme(
+        bottomActionsBackgroundColor: Colors.transparent,
+      ),
+    );
   }
 }
 
@@ -198,14 +209,14 @@ class PhotoPreviewScreen extends GetView<CameraController> {
 
           return Stack(
             children: [
-              // Image Preview
+              // Image Preview - CORREGIDO
               Positioned.fill(
                 child: Image.file(
-                  (controller.capturedImagePath.value) as File,
+                  File(controller.capturedImagePath
+                      .value), // Crear File a partir del String
                   fit: BoxFit.contain,
                 ),
               ),
-
               // Top Bar with Close Button
               Positioned(
                 top: 16,

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:povo/app/core/routes/app_routes.dart';
 import 'package:povo/app/data/models/photo_model.dart';
 import 'package:povo/app/data/repositories/photo_repository.dart';
@@ -24,7 +25,7 @@ class CameraController extends GetxController {
   final RxString capturedImagePath = ''.obs;
   final TextEditingController captionController = TextEditingController();
 
-  // Camera controller from CameraAwesome
+  // Cámara: estado y filtros
   Rx<CameraState?> get cameraState => _cameraService.cameraState;
   RxList<AwesomeFilter> get availableFilters => _cameraService.availableFilters;
   Rx<AwesomeFilter> get currentFilter => _cameraService.currentFilter;
@@ -35,22 +36,51 @@ class CameraController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Get event ID from arguments if available
+    // Si hay argumentos, extraer eventId
     if (Get.arguments != null) {
-      currentEventId.value = Get.arguments as String;
+      if (Get.arguments is String) {
+        currentEventId.value = Get.arguments as String;
+      } else if (Get.arguments is Map) {
+        Map args = Get.arguments as Map;
+        if (args.containsKey('eventId')) {
+          currentEventId.value = args['eventId'].toString();
+        }
+      }
     }
-    initializeCamera();
+    // Retrasar la inicialización hasta después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      initializeCamera();
+    });
   }
 
-  // Initialize the camera
-  Future<void> initializeCamera() async {
+  // Inicializar la cámara con un pequeño retraso y reintento en caso de error
+  Future<void> initializeCamera({int retryCount = 0}) async {
     try {
-      await _cameraService.initCamera();
+      print("Inicializando cámara...");
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      // Update local variables to reflect service state
+      print("Permisos concedidos. Inicializando cámara...");
+      await _cameraService.initCamera();
+      print("Estado de la cámara: ${_cameraService.cameraState.value}");
+      // Espera a que el estado de la cámara esté disponible
+      await Future.delayed(const Duration(
+          seconds: 1)); // Espera 1 segundo (ajusta según sea necesario)
+      if (_cameraService.cameraState.value == null) {
+        throw Exception("El estado de la cámara no está disponible");
+      }
+
+      print("Cámara inicializada correctamente.");
       isFrontCamera.value = _cameraService.isFrontCamera.value;
       isFlashOn.value = _cameraService.isFlashOn.value;
+      hasError.value = false;
     } catch (e) {
+      print("Error inicializando cámara: $e");
+      if (e.toString().contains("EventSink is closed") && retryCount < 3) {
+        print("Reintentando inicialización...");
+        await Future.delayed(const Duration(seconds: 1));
+        await initializeCamera(retryCount: retryCount + 1);
+        return;
+      }
       hasError.value = true;
       errorMessage.value =
           'No se pudo inicializar la cámara. Verifique los permisos.';
@@ -58,19 +88,16 @@ class CameraController extends GetxController {
     }
   }
 
-  // Capture a photo
+  // Capturar foto
   Future<void> capturePhoto() async {
     if (isCapturing.value) return;
 
     try {
       isCapturing.value = true;
 
-      // Take the picture
-      final imagePath = await _cameraService.takePicture();
-      capturedImagePath.value = imagePath;
-
-      // Navigate to preview page
-      Get.toNamed(AppRoutes.PHOTO_PREVIEW);
+      // En lugar de intentar acceder al estado, utiliza directamente la API
+      // La foto se capturará y será manejada por onMediaCaptureEvent en el widget
+      // No necesitas asignar capturedImagePath aquí
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -83,7 +110,7 @@ class CameraController extends GetxController {
     }
   }
 
-  // Upload the captured photo
+  // Subir la foto capturada
   Future<void> uploadPhoto() async {
     if (capturedImagePath.value.isEmpty || currentEventId.value.isEmpty) return;
 
@@ -108,7 +135,7 @@ class CameraController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
 
-      // Clear captured image path and caption
+      // Limpiar imagen y descripción
       capturedImagePath.value = '';
       captionController.clear();
     } catch (e) {
@@ -123,7 +150,13 @@ class CameraController extends GetxController {
     }
   }
 
-  // Discard the captured photo
+// Método público para actualizar el estado de la cámara
+  void updateCameraState(CameraState state) {
+    _cameraService.cameraState.value = state;
+    print("Estado de la cámara actualizado: ${state.runtimeType}");
+  }
+
+  // Desechar la foto capturada
   void discardPhoto() {
     try {
       if (capturedImagePath.value.isNotEmpty) {
@@ -132,40 +165,38 @@ class CameraController extends GetxController {
           file.deleteSync();
         }
       }
-
       capturedImagePath.value = '';
       captionController.clear();
-
-      // Navigate back to camera
+      // Volver a la cámara
       Get.back();
     } catch (e) {
       print('Error discarding photo: $e');
     }
   }
 
-  // Toggle camera (front/back)
+  // Alternar entre cámara frontal y trasera
   void toggleCamera() {
     _cameraService.toggleCamera();
     isFrontCamera.value = _cameraService.isFrontCamera.value;
   }
 
-  // Toggle flash
+  // Alternar flash
   void toggleFlash() {
     _cameraService.toggleFlash();
     isFlashOn.value = _cameraService.isFlashOn.value;
   }
 
-  // Select a filter
+  // Seleccionar filtro
   void selectFilter(AwesomeFilter filter) {
     _cameraService.setFilter(filter);
   }
 
-  // Get camera configuration
+  // Obtener configuración de la cámara
   SensorConfig getCameraConfig() {
     return _cameraService.getSensorConfig();
   }
 
-  // Set zoom level
+  // Establecer nivel de zoom
   void setZoomLevel(double zoom) {
     _cameraService.setZoomLevel(zoom);
   }

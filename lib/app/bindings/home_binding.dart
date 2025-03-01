@@ -12,26 +12,26 @@ class HomeBinding extends Bindings {
   void dependencies() {
     // Services
     if (!Get.isRegistered<FirebaseService>()) {
-      Get.putAsync<FirebaseService>(() => FirebaseService().init());
+      Get.put<FirebaseService>(FirebaseService());
     }
 
     if (!Get.isRegistered<StorageService>()) {
-      Get.putAsync<StorageService>(() => StorageService().init());
+      Get.put<StorageService>(StorageService());
     }
 
     if (!Get.isRegistered<AuthService>()) {
-      Get.putAsync<AuthService>(() => AuthService().init());
+      Get.put<AuthService>(AuthService());
     }
 
     if (!Get.isRegistered<NotificationService>()) {
-      Get.putAsync<NotificationService>(() => NotificationService().init());
+      Get.put<NotificationService>(NotificationService());
     }
 
     // Repositories
-    Get.lazyPut<UserRepository>(() => UserRepository());
-    Get.lazyPut<EventRepository>(() => EventRepository());
+    Get.put<UserRepository>(UserRepository());
+    Get.put<EventRepository>(EventRepository());
 
     // Controllers
-    Get.lazyPut<HomeController>(() => HomeController());
+    Get.put<HomeController>(HomeController());
   }
 }

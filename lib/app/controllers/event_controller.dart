@@ -114,7 +114,6 @@ class EventController extends GetxController {
 
 // Navegar a la pantalla de cámara
   void goToCamera(String eventId) {
-    // Puedes pasar el eventId como argumento a la ruta correspondiente
     Get.toNamed(AppRoutes.CAMERA, arguments: {'eventId': eventId});
   }
 

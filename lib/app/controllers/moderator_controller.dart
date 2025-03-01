@@ -37,10 +37,51 @@ class ModeratorController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Get event ID from arguments if available
+
+    // Extraer el eventId del mapa de argumentos
     if (Get.arguments != null) {
-      currentEventId.value = Get.arguments as String;
-      loadEventAndPhotos();
+      String eventId;
+
+      if (Get.arguments is Map) {
+        // Si es un mapa, obtener el valor de 'eventId'
+        eventId = Get.arguments['eventId'];
+      } else if (Get.arguments is String) {
+        // Para mantener compatibilidad por si antes se pasaba como String
+        eventId = Get.arguments;
+      } else {
+        // Si no es ni un mapa ni un String, mostrar error
+        hasError.value = true;
+        errorMessage.value = 'Formato de argumentos no válido';
+        return;
+      }
+
+      if (eventId != null) {
+        loadData(eventId);
+      } else {
+        hasError.value = true;
+        errorMessage.value = 'ID de evento no proporcionado';
+      }
+    } else {
+      hasError.value = true;
+      errorMessage.value = 'No se proporcionaron argumentos';
+    }
+  }
+
+  void loadData(String eventId) {
+    try {
+      isLoading.value = true;
+      hasError.value = false;
+
+      // Resto de tu código para cargar datos...
+      currentEventId.value = eventId;
+
+      // Cargar el evento, fotos pendientes, etc.
+    } catch (e) {
+      print('Error loading moderation data: $e');
+      hasError.value = true;
+      errorMessage.value = 'Error al cargar los datos: $e';
+    } finally {
+      isLoading.value = false;
     }
   }
 

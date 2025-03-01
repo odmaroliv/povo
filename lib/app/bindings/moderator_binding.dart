@@ -12,23 +12,23 @@ class ModeratorBinding extends Bindings {
   void dependencies() {
     // Services
     if (!Get.isRegistered<FirebaseService>()) {
-      Get.putAsync<FirebaseService>(() => FirebaseService().init());
+      Get.put<FirebaseService>(FirebaseService());
     }
 
     if (!Get.isRegistered<StorageService>()) {
-      Get.putAsync<StorageService>(() => StorageService().init());
+      Get.put<StorageService>(StorageService());
     }
 
     if (!Get.isRegistered<AuthService>()) {
-      Get.putAsync<AuthService>(() => AuthService().init());
+      Get.put<AuthService>(AuthService());
     }
 
     // Repositories
-    Get.lazyPut<UserRepository>(() => UserRepository());
-    Get.lazyPut<EventRepository>(() => EventRepository());
-    Get.lazyPut<PhotoRepository>(() => PhotoRepository());
+    Get.put<UserRepository>(UserRepository());
+    Get.put<EventRepository>(EventRepository());
+    Get.put<PhotoRepository>(PhotoRepository());
 
     // Controllers
-    Get.lazyPut<ModeratorController>(() => ModeratorController());
+    Get.put<ModeratorController>(ModeratorController());
   }
 }

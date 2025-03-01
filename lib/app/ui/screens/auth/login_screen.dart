@@ -18,11 +18,14 @@ class LoginScreen extends GetView<AuthController> {
             children: [
               const SizedBox(height: 40),
 
-              // App Logo
+              // Logo alternativo: Mostrar "POVO" en vez de imagen
               Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 120,
+                child: Text(
+                  'POVO',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: ColorConstants.primaryColor,
+                      ),
                 ),
               ),
 
@@ -97,7 +100,7 @@ class LoginScreen extends GetView<AuthController> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // Show reset password dialog
+                    // Mostrar diálogo de restablecer contraseña
                     _showResetPasswordDialog(context);
                   },
                   child: const Text('¿Olvidaste tu contraseña?'),
@@ -166,10 +169,12 @@ class LoginScreen extends GetView<AuthController> {
 
               const SizedBox(height: 24),
 
-              // Google Sign In Button
+              // Google Sign In Button usando imagen de red como icono
               Obx(() => SocialButton(
                     text: 'Continuar con Google',
-                    icon: 'assets/icons/google.png',
+                    // Usamos una imagen de red para el logo de Google
+                    icon:
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png',
                     onPressed: controller.isLoading.value
                         ? null
                         : controller.signInWithGoogle,
@@ -198,7 +203,7 @@ class LoginScreen extends GetView<AuthController> {
     );
   }
 
-  // Reset Password Dialog
+  // Diálogo para restablecer contraseña
   void _showResetPasswordDialog(BuildContext context) {
     final TextEditingController emailController = TextEditingController();
 
@@ -240,6 +245,50 @@ class LoginScreen extends GetView<AuthController> {
             child: const Text('Enviar'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SocialButton extends StatelessWidget {
+  final String text;
+  final String icon;
+  final VoidCallback? onPressed;
+
+  const SocialButton({
+    Key? key,
+    required this.text,
+    required this.icon,
+    this.onPressed,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Detecta si la cadena es una URL y selecciona el widget de imagen correspondiente
+    final Widget iconWidget = icon.startsWith('http')
+        ? Image.network(
+            icon,
+            height: 24,
+            width: 24,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.error, size: 24);
+            },
+          )
+        : Image.asset(
+            icon,
+            height: 24,
+            width: 24,
+            fit: BoxFit.contain,
+          );
+
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: iconWidget,
+      label: Text(text),
+      style: ElevatedButton.styleFrom(
+        // Establece un padding adecuado para evitar desbordamientos
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       ),
     );
   }

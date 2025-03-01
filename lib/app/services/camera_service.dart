@@ -1,27 +1,30 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
-import 'package:flutter/rendering.dart';
+
 import 'package:camerawesome/camerawesome_plugin.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:povo/app/services/storage_service.dart';
-import 'package:camerawesome/camerawesome_plugin.dart';
 
 class CameraService extends GetxService {
   final StorageService _storageService = Get.find<StorageService>();
+
+  // Estado de la cámara y configuraciones
   final Rx<CameraState?> cameraState = Rx<CameraState?>(null);
   final RxBool hasPermission = false.obs;
   final RxBool isInitialized = false.obs;
   final RxBool isFrontCamera = false.obs;
   final RxBool isFlashOn = false.obs;
 
-  // Camera filters
-  // Camera filters
+  // Control de zoom (opcional)
+  final RxDouble zoomLevel = 1.0.obs;
+
+  // Filtros disponibles y filtro actual
   final RxList<AwesomeFilter> availableFilters = <AwesomeFilter>[
     AwesomeFilter.None,
     AwesomeFilter.AddictiveRed,
@@ -54,83 +57,139 @@ class CameraService extends GetxService {
     AwesomeFilter.Willow,
     AwesomeFilter.XProII,
   ].obs;
-
   final Rx<AwesomeFilter> currentFilter = AwesomeFilter.None.obs;
 
+  /// Inicializa la cámara solicitando primero los permisos necesarios.
   Future<void> initCamera() async {
     await _checkAndRequestPermissions();
     isInitialized.value = true;
+    // No crees aquí el CameraAwesomeBuilder
   }
 
+  /// Solicita permisos de cámara y micrófono.
   Future<void> _checkAndRequestPermissions() async {
-    final cameraPermission = await Permission.camera.status;
-    final microphonePermission = await Permission.microphone.status;
+    final cameraStatus = await Permission.camera.status;
+    final storageStatus = await Permission.storage.status;
+    print('Verificando permisos...');
 
-    if (!cameraPermission.isGranted) {
-      await Permission.camera.request();
+    if (!cameraStatus.isGranted) {
+      print("Permiso de cámara no concedido. Solicitando permisos...");
+      final result = await Permission.camera.request();
+      if (!result.isGranted) {
+        if (result.isPermanentlyDenied) {
+          print("Permiso de cámara denegado permanentemente.");
+          await openAppSettings();
+          throw Exception(
+              "Permiso de cámara denegado permanentemente. Habilítalo manualmente en la configuración.");
+        } else {
+          throw Exception("Permiso de cámara denegado.");
+        }
+      }
     }
 
-    if (!microphonePermission.isGranted) {
-      await Permission.microphone.request();
+    if (!storageStatus.isGranted) {
+      print("Permiso de almacenamiento no concedido. Solicitando permisos...");
+      final result = await Permission.storage.request();
+      if (!result.isGranted) {
+        if (result.isPermanentlyDenied) {
+          print("Permiso de almacenamiento denegado permanentemente.");
+          await openAppSettings();
+          throw Exception(
+              "Permiso de almacenamiento denegado permanentemente. Habilítalo manualmente en la configuración.");
+        } else {
+          throw Exception("Permiso de almacenamiento denegado.");
+        }
+      }
     }
 
-    hasPermission.value = await Permission.camera.isGranted;
+    print("Permisos concedidos.");
   }
 
+  /// Alterna entre cámara frontal y trasera.
   void toggleCamera() {
     isFrontCamera.value = !isFrontCamera.value;
   }
 
+  /// Alterna el estado del flash.
   void toggleFlash() {
     isFlashOn.value = !isFlashOn.value;
   }
 
+  /// Establece el filtro actual.
   void setFilter(AwesomeFilter filter) {
     currentFilter.value = filter;
   }
 
+  /// Obtiene la configuración del sensor según el estado actual.
+  SensorConfig getSensorConfig() {
+    return SensorConfig.single(
+      flashMode: isFlashOn.value ? FlashMode.always : FlashMode.none,
+      aspectRatio: CameraAspectRatios.ratio_4_3,
+      sensor: Sensor.position(
+        isFrontCamera.value ? SensorPosition.front : SensorPosition.back,
+      ),
+    );
+  }
+
+  /// Retorna el nivel actual de zoom.
+  double getZoomLevel() {
+    return zoomLevel.value;
+  }
+
+  /// Actualiza el nivel de zoom (debes implementar la lógica en el widget si es necesario).
+  void setZoomLevel(double zoom) {
+    zoomLevel.value = zoom;
+    // Aquí puedes llamar a la API de Camerawesome para actualizar el zoom si la librería lo soporta.
+  }
+
+  void setCameraState(CameraState state) {
+    cameraState.value = state;
+  }
+
+  /// Toma una foto usando el estado actual de la cámara.
+  /// Aplica el filtro seleccionado (si es distinto de None) y comprime la imagen.
+  /// Retorna la ruta final del archivo.
   Future<String> takePicture() async {
     try {
       final tempDir = await getTemporaryDirectory();
       final fileName = '${const Uuid().v4()}.jpg';
-      final path = '${tempDir.path}/$fileName';
+      final originalPath = '${tempDir.path}/$fileName';
+      String? capturedPath;
 
-      // Tomar la foto usando CamerAwesome - método correcto
-      String? filePath;
+      if (cameraState.value == null) {
+        throw Exception("El estado de la cámara no está disponible");
+      }
 
-      await cameraState.value?.when(
+      await cameraState.value!.when(
         onPhotoMode: (photoState) async {
-          // Aquí está el método correcto para tomar una foto
           final captureRequest = await photoState.takePhoto();
-          filePath = captureRequest.path;
+          capturedPath = captureRequest.path;
         },
-        onVideoMode: (_) => null,
-        onVideoRecordingMode: (_) => null,
-        onPreparingCamera: (_) => null,
+        onVideoMode: (_) async {},
+        onVideoRecordingMode: (_) async {},
+        onPreparingCamera: (_) async {},
       );
 
-      if (filePath == null) {
-        throw Exception('Failed to take picture');
+      if (capturedPath == null) {
+        throw Exception("No se pudo capturar la foto");
       }
 
-      // Aplicar filtro a la imagen
-      File processedFile = File(filePath!);
+      File processedFile = File(capturedPath!);
 
+      // Aplicar filtro si corresponde
       if (currentFilter.value != AwesomeFilter.None) {
-        // Aplicar el filtro seleccionado a la imagen
-        final img =
-            await decodeImageFromList(await processedFile.readAsBytes());
-        final filteredImg = await applyFilterToImage(img, currentFilter.value);
-
-        // Guardar la imagen filtrada
-        final filteredFile = File('${tempDir.path}/filtered_$fileName');
-        await filteredFile.writeAsBytes(filteredImg);
-        processedFile = filteredFile;
+        final bytes = await processedFile.readAsBytes();
+        final uiImage = await decodeImageFromList(bytes);
+        final Uint8List filteredBytes =
+            await applyFilterToImage(uiImage, currentFilter.value);
+        final filteredPath = '${tempDir.path}/filtered_$fileName';
+        await File(filteredPath).writeAsBytes(filteredBytes);
+        processedFile = File(filteredPath);
       }
 
-      // Comprimir la imagen y generar thumbnail
-      final compressedFile = await compressImage(processedFile.path, path);
-
+      // Comprimir la imagen y guardar en originalPath
+      final compressedFile =
+          await compressImage(processedFile.path, originalPath);
       return compressedFile.path;
     } catch (e) {
       print('Error taking picture: $e');
@@ -138,54 +197,44 @@ class CameraService extends GetxService {
     }
   }
 
-// Función para aplicar un filtro a una imagen
+  /// Aplica un filtro a la imagen usando un canvas.
+  /// Retorna los bytes de la imagen filtrada en formato PNG.
   Future<Uint8List> applyFilterToImage(
       ui.Image image, AwesomeFilter filter) async {
-    // Crear un canvas para dibujar la imagen
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-
-    // Obtener el tamaño de la imagen
-    final size = Size(image.width.toDouble(), image.height.toDouble());
-
-    // Aplicar el filtro como un ColorFilter
     final paint = Paint()..colorFilter = filter.preview;
-
-    // Dibujar la imagen con el filtro aplicado
     canvas.drawImage(image, Offset.zero, paint);
-
-    // Capturar el resultado
     final picture = recorder.endRecording();
-    final img = await picture.toImage(image.width, image.height);
-    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-
+    final filteredImage = await picture.toImage(image.width, image.height);
+    final byteData =
+        await filteredImage.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) {
-      throw Exception('Failed to apply filter to image');
+      throw Exception("Error al aplicar el filtro a la imagen");
     }
-
     return byteData.buffer.asUint8List();
   }
 
+  /// Comprime la imagen ubicada en inputPath y la guarda en outputPath.
+  /// Retorna el archivo comprimido.
   Future<File> compressImage(String inputPath, String outputPath) async {
     final result = await FlutterImageCompress.compressAndGetFile(
       inputPath,
       outputPath,
       quality: 85,
     );
-
     if (result == null) {
-      throw Exception('Failed to compress image');
+      throw Exception("Error al comprimir la imagen");
     }
-
     return File(result.path);
   }
 
+  /// Genera un thumbnail de la imagen ubicada en imagePath.
   Future<String> generateThumbnail(String imagePath) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final thumbnailFileName = 'thumb_${const Uuid().v4()}.jpg';
       final thumbnailPath = '${tempDir.path}/$thumbnailFileName';
-
       final result = await FlutterImageCompress.compressAndGetFile(
         imagePath,
         thumbnailPath,
@@ -193,11 +242,9 @@ class CameraService extends GetxService {
         minWidth: 300,
         minHeight: 300,
       );
-
       if (result == null) {
-        throw Exception('Failed to generate thumbnail');
+        throw Exception("Error al generar el thumbnail");
       }
-
       return result.path;
     } catch (e) {
       print('Error generating thumbnail: $e');
@@ -205,20 +252,19 @@ class CameraService extends GetxService {
     }
   }
 
+  /// Sube la foto junto con su thumbnail.
+  /// Retorna un mapa con las URLs de la foto y del thumbnail.
   Future<Map<String, String>> uploadPhotoWithThumbnail(
       String photoPath, String eventId) async {
     try {
-      // Generate thumbnail
       final thumbnailPath = await generateThumbnail(photoPath);
-
-      // Generate unique filenames
       final fileName = 'event_$eventId/${const Uuid().v4()}.jpg';
       final thumbnailFileName = 'event_$eventId/thumb_${const Uuid().v4()}.jpg';
 
-      // Upload both files to Firebase Storage
-      final photoUrl =
-          await _storageService.uploadFile(photoPath, 'photos/$fileName');
-      final thumbnailUrl = await _storageService.uploadFile(
+      // Usar el nuevo método que crea los directorios si no existen
+      final photoUrl = await _storageService.uploadPhotoToPath(
+          photoPath, 'photos/$fileName');
+      final thumbnailUrl = await _storageService.uploadPhotoToPath(
           thumbnailPath, 'thumbnails/$thumbnailFileName');
 
       return {
@@ -231,42 +277,14 @@ class CameraService extends GetxService {
     }
   }
 
-  // Camera settings methods
-  CameraAspectRatios getCurrentAspectRatio() {
-    return CameraAspectRatios.ratio_4_3;
-  }
-
-  void setAspectRatio(CameraAspectRatios ratio) {
-    // This would be implemented to change the camera's aspect ratio
-    // In a real app, this would interact with CamerAwesome's API
-  }
-
-  double getZoomLevel() {
-    return 1.0; // Default zoom level
-  }
-
-  void setZoomLevel(double zoom) {
-    // This would adjust zoom using CamerAwesome's API
-  }
-
-  // Camera configuration
-  SensorConfig getSensorConfig() {
-    return SensorConfig.single(
-      flashMode: isFlashOn.value ? FlashMode.always : FlashMode.none,
-      aspectRatio: getCurrentAspectRatio(),
-      sensor: Sensor.position(
-          isFrontCamera.value ? SensorPosition.front : SensorPosition.back),
-    );
-  }
-
-  // Clean up resources
-  void dispose() {
-    // Clean up any resources if needed
-  }
-
-  // Initialize service
+  /// Método de inicialización para la inyección asíncrona.
   Future<CameraService> init() async {
     await initCamera();
     return this;
+  }
+
+  /// Limpia recursos si es necesario.
+  void dispose() {
+    // Implementa la limpieza de recursos si es requerido.
   }
 }

@@ -9,16 +9,16 @@ import 'package:povo/app/services/storage_service.dart';
 class AuthBinding extends Bindings {
   @override
   void dependencies() {
-    // Services
-    Get.putAsync<FirebaseService>(() => FirebaseService().init());
-    Get.putAsync<StorageService>(() => StorageService().init());
-    Get.putAsync<AuthService>(() => AuthService().init());
-    Get.putAsync<NotificationService>(() => NotificationService().init());
+    // Services - registro síncrono
+    Get.put<FirebaseService>(FirebaseService());
+    Get.put<StorageService>(StorageService());
+    Get.put<AuthService>(AuthService());
+    Get.put<NotificationService>(NotificationService());
 
     // Repositories
-    Get.lazyPut<UserRepository>(() => UserRepository());
+    Get.put<UserRepository>(UserRepository());
 
     // Controllers
-    Get.lazyPut<AuthController>(() => AuthController());
+    Get.put<AuthController>(AuthController());
   }
 }

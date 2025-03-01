@@ -11,23 +11,23 @@ class CameraBinding extends Bindings {
   void dependencies() {
     // Services
     if (!Get.isRegistered<FirebaseService>()) {
-      Get.putAsync<FirebaseService>(() => FirebaseService().init());
+      Get.put<FirebaseService>(FirebaseService());
     }
 
     if (!Get.isRegistered<StorageService>()) {
-      Get.putAsync<StorageService>(() => StorageService().init());
+      Get.put<StorageService>(StorageService());
     }
 
     if (!Get.isRegistered<AuthService>()) {
-      Get.putAsync<AuthService>(() => AuthService().init());
+      Get.put<AuthService>(AuthService());
     }
 
-    Get.putAsync<CameraService>(() => CameraService().init());
+    Get.put<CameraService>(CameraService());
 
     // Repositories
-    Get.lazyPut<PhotoRepository>(() => PhotoRepository());
+    Get.put<PhotoRepository>(PhotoRepository());
 
     // Controllers
-    Get.lazyPut<CameraController>(() => CameraController());
+    Get.put<CameraController>(CameraController());
   }
 }
