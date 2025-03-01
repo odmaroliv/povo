@@ -18,6 +18,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     
     <application
+    android:requestLegacyExternalStorage="true"
         android:label="povo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

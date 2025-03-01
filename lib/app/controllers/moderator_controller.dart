@@ -67,15 +67,15 @@ class ModeratorController extends GetxController {
     }
   }
 
-  void loadData(String eventId) {
+  void loadData(String eventId) async {
     try {
       isLoading.value = true;
       hasError.value = false;
 
-      // Resto de tu código para cargar datos...
       currentEventId.value = eventId;
 
-      // Cargar el evento, fotos pendientes, etc.
+      // Llamar al método que carga el evento y las fotos
+      await loadEventAndPhotos();
     } catch (e) {
       print('Error loading moderation data: $e');
       hasError.value = true;

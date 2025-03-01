@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
-
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -68,40 +68,56 @@ class CameraService extends GetxService {
 
   /// Solicita permisos de cámara y micrófono.
   Future<void> _checkAndRequestPermissions() async {
-    final cameraStatus = await Permission.camera.status;
-    final storageStatus = await Permission.storage.status;
-    print('Verificando permisos...');
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
 
-    if (!cameraStatus.isGranted) {
-      print("Permiso de cámara no concedido. Solicitando permisos...");
-      final result = await Permission.camera.request();
-      if (!result.isGranted) {
-        if (result.isPermanentlyDenied) {
-          print("Permiso de cámara denegado permanentemente.");
-          await openAppSettings();
-          throw Exception(
-              "Permiso de cámara denegado permanentemente. Habilítalo manualmente en la configuración.");
-        } else {
-          throw Exception("Permiso de cámara denegado.");
+      if (sdkInt >= 33) {
+        // En Android 13+, usar el permiso de fotos
+        final photosStatus = await Permission.photos.status;
+        if (!photosStatus.isGranted) {
+          print("Permiso de fotos no concedido. Solicitando permisos...");
+          final result = await Permission.photos.request();
+          if (!result.isGranted) {
+            if (result.isPermanentlyDenied) {
+              print("Permiso de fotos denegado permanentemente.");
+              await openAppSettings();
+              throw Exception(
+                  "Permiso de fotos denegado permanentemente. Habilítalo manualmente en la configuración.");
+            } else {
+              throw Exception("Permiso de fotos denegado.");
+            }
+          }
+        }
+      } else {
+        // Para Android < 13
+        final storageStatus = await Permission.storage.status;
+        if (!storageStatus.isGranted) {
+          print(
+              "Permiso de almacenamiento no concedido. Solicitando permisos...");
+          final result = await Permission.storage.request();
+          if (!result.isGranted) {
+            if (result.isPermanentlyDenied) {
+              print("Permiso de almacenamiento denegado permanentemente.");
+              await openAppSettings();
+              throw Exception(
+                  "Permiso de almacenamiento denegado permanentemente. Habilítalo manualmente en la configuración.");
+            } else {
+              throw Exception("Permiso de almacenamiento denegado.");
+            }
+          }
+        }
+      }
+    } else {
+      // Para iOS u otras plataformas
+      final photosStatus = await Permission.photos.status;
+      if (!photosStatus.isGranted) {
+        final result = await Permission.photos.request();
+        if (!result.isGranted) {
+          throw Exception("Permiso de fotos denegado.");
         }
       }
     }
-
-    if (!storageStatus.isGranted) {
-      print("Permiso de almacenamiento no concedido. Solicitando permisos...");
-      final result = await Permission.storage.request();
-      if (!result.isGranted) {
-        if (result.isPermanentlyDenied) {
-          print("Permiso de almacenamiento denegado permanentemente.");
-          await openAppSettings();
-          throw Exception(
-              "Permiso de almacenamiento denegado permanentemente. Habilítalo manualmente en la configuración.");
-        } else {
-          throw Exception("Permiso de almacenamiento denegado.");
-        }
-      }
-    }
-
     print("Permisos concedidos.");
   }
 
