@@ -13,7 +13,7 @@ class GalleryController extends GetxController {
   final UserRepository _userRepository = Get.find<UserRepository>();
   final AuthService _authService = Get.find<AuthService>();
 
-  // State variables
+  // Estado
   final RxBool isLoading = false.obs;
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
@@ -25,6 +25,9 @@ class GalleryController extends GetxController {
   final RxList<PhotoModel> photos = <PhotoModel>[].obs;
   final RxMap<String, UserModel> userMap = <String, UserModel>{}.obs;
 
+  // Para almacenar URLs seguras
+  final RxMap<String, String> securePhotoUrls = <String, String>{}.obs;
+
   // Getters
   String get userId => _authService.userId!;
 
@@ -33,7 +36,11 @@ class GalleryController extends GetxController {
     super.onInit();
     // Get event ID from arguments if available
     if (Get.arguments != null) {
-      currentEventId.value = Get.arguments as String;
+      if (Get.arguments is String) {
+        currentEventId.value = Get.arguments as String;
+      } else if (Get.arguments is Map) {
+        currentEventId.value = Get.arguments['eventId'] as String;
+      }
       loadEventAndPhotos();
     }
   }
@@ -57,6 +64,9 @@ class GalleryController extends GetxController {
 
         // Load user data for photos
         await _loadPhotoUsers();
+
+        // Cargar URLs seguras
+        await _loadSecurePhotoUrls();
       } else {
         hasError.value = true;
         errorMessage.value = 'Evento no encontrado.';
@@ -68,6 +78,38 @@ class GalleryController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // Cargar URLs seguras para todas las fotos
+  Future<void> _loadSecurePhotoUrls() async {
+    try {
+      if (photos.isEmpty) return;
+
+      // Obtener URLs seguras para todas las fotos en una sola llamada
+      final urls = await _photoRepository.getSecureEventPhotosUrls(
+          currentEventId.value, photos.toList());
+
+      // Actualizar el mapa de URLs
+      securePhotoUrls.assignAll(urls);
+    } catch (e) {
+      print('Error cargando URLs seguras: $e');
+      // No mostrar error al usuario, usar URLs normales como fallback
+    }
+  }
+
+  // Obtener URL segura para una foto
+  String getSecureUrl(String photoId, {bool isThumb = false}) {
+    final key = '${photoId}_${isThumb ? 'thumb' : 'full'}';
+
+    // Si existe URL segura, usarla
+    if (securePhotoUrls.containsKey(key)) {
+      return securePhotoUrls[key]!;
+    }
+
+    // Fallback: usar URL almacenada directamente en el modelo
+    final photo =
+        photos.firstWhere((p) => p.id == photoId, orElse: () => photos[0]);
+    return isThumb ? photo.thumbnailUrl : photo.url;
   }
 
   // Load approved photos

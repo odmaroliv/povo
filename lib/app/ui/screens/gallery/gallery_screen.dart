@@ -109,6 +109,7 @@ class GalleryScreen extends GetView<GalleryController> {
       onPhotoTap: (index) {
         controller.setCurrentPhotoIndex(index);
       },
+      secureUrls: controller.securePhotoUrls, // Pasar URLs seguras
     );
   }
 
@@ -126,12 +127,15 @@ class GalleryScreen extends GetView<GalleryController> {
       final userName = controller.getUserName(currentPhoto.userId);
       final isLiked = controller.isPhotoLiked(currentPhoto.id);
       final likesCount = controller.getLikesCount(currentPhoto.id);
+      final secureUrl =
+          controller.getSecureUrl(currentPhoto.id, isThumb: false);
 
       return PhotoView(
         photo: currentPhoto,
         userName: userName,
         isLiked: isLiked,
         likesCount: likesCount,
+        secureUrl: secureUrl, // Pasar URL segura
         onClose: () {
           controller.currentPhotoIndex.value = -1;
         },
@@ -149,8 +153,9 @@ class GalleryScreen extends GetView<GalleryController> {
             controller.likePhoto(currentPhoto.id);
           }
         },
-        onShare: () => controller.sharePhoto(currentPhoto.url),
-        onDownload: () => controller.downloadPhoto(currentPhoto.url),
+        onShare: () => controller.sharePhoto(secureUrl), // Usar URL segura
+        onDownload: () =>
+            controller.downloadPhoto(secureUrl), // Usar URL segura
       );
     });
   }

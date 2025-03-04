@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:povo/app/data/models/photo_model.dart';
 import 'package:povo/app/services/camera_service.dart';
 import 'package:povo/app/services/firebase_service.dart';
+import 'package:povo/app/services/secured_storage_service.dart';
 import 'package:povo/app/services/storage_service.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,10 +13,13 @@ class PhotoRepository {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final StorageService _storageService = Get.find<StorageService>();
   final CameraService _cameraService = Get.find<CameraService>();
+  final SecuredStorageService _securedStorageService =
+      Get.find<SecuredStorageService>(); // Añadir esta línea
 
   // Collection reference
   CollectionReference get photosCollection => _firebaseService.photosCollection;
 
+  // Upload a new photo
   // Upload a new photo
   Future<PhotoModel> uploadPhoto({
     required String photoPath,
@@ -31,25 +35,33 @@ class PhotoRepository {
       final docRef = photosCollection.doc();
       final photoId = docRef.id;
 
+      // Construir los paths para las fotos (ahora utilizaremos estos paths específicos)
+      final String photoFileName =
+          'event_$eventId/user_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String thumbFileName =
+          'event_$eventId/user_${userId}_thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
       // Upload the photo and thumbnail to storage
-      final urls =
-          await _cameraService.uploadPhotoWithThumbnail(photoPath, eventId);
+      final urls = await _cameraService.uploadPhotoWithSpecificPath(
+          photoPath, 'photos/$photoFileName', 'thumbnails/$thumbFileName');
 
       // Create the photo model
       final photo = PhotoModel(
-        id: photoId,
-        eventId: eventId,
-        userId: userId,
-        url: urls['photoUrl']!,
-        thumbnailUrl: urls['thumbnailUrl']!,
-        status: 'pending', // Default status for new photos
-        capturedAt: DateTime.now(),
-        uploadedAt: DateTime.now(),
-        caption: caption,
-        tags: tags,
-        metadata: metadata,
-        filter: filter,
-      );
+          id: photoId,
+          eventId: eventId,
+          userId: userId,
+          url: urls['photoUrl']!,
+          thumbnailUrl: urls['thumbnailUrl']!,
+          status: 'pending',
+          capturedAt: DateTime.now(),
+          uploadedAt: DateTime.now(),
+          caption: caption,
+          tags: tags,
+          metadata: metadata,
+          filter: filter,
+          storagePath: photoFileName, // Guardar la ruta específica
+          storageThumbPath: thumbFileName // Guardar la ruta de la miniatura
+          );
 
       // Save to Firestore
       await docRef.set(photo.toJson());
@@ -62,6 +74,57 @@ class PhotoRepository {
       return photo;
     } catch (e) {
       print('Error uploading photo: $e');
+      rethrow;
+    }
+  }
+
+  // Obtener URL segura para una foto
+  Future<String> getSecurePhotoUrl(
+      String eventId, String photoId, bool isThumb) async {
+    try {
+      final doc = await photosCollection.doc(photoId).get();
+
+      if (!doc.exists) {
+        throw Exception('Foto no encontrada');
+      }
+
+      final photoData = doc.data() as Map<String, dynamic>;
+      final String path = isThumb
+          ? photoData['storageThumbPath'] as String
+          : photoData['storagePath'] as String;
+
+      return await _securedStorageService.getSecurePhotoUrl(eventId, path,
+          isThumb: isThumb);
+    } catch (e) {
+      print('Error getting secure photo URL: $e');
+      rethrow;
+    }
+  }
+
+  // Obtener múltiples URLs para fotos de un evento
+  Future<Map<String, String>> getSecureEventPhotosUrls(
+      String eventId, List<PhotoModel> photos) async {
+    try {
+      final List<Map<String, dynamic>> pathsData = [];
+
+      // Preparar datos para la llamada en lote
+      for (var photo in photos) {
+        // Ruta completa
+        pathsData.add(
+            {'photoId': photo.id, 'path': photo.storagePath, 'isThumb': false});
+
+        // Ruta de miniatura
+        pathsData.add({
+          'photoId': photo.id,
+          'path': photo.storageThumbPath,
+          'isThumb': true
+        });
+      }
+
+      return await _securedStorageService.getMultiplePhotoUrls(
+          eventId, pathsData);
+    } catch (e) {
+      print('Error getting batch photo URLs: $e');
       rethrow;
     }
   }

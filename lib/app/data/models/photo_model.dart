@@ -14,6 +14,8 @@ class PhotoModel {
   final Map<String, dynamic>? metadata;
   final Map<String, dynamic>? filter;
   final List<String> likedByUserIds;
+  final String storagePath; // Nuevo campo para ruta de almacenamiento
+  final String storageThumbPath; // Nuevo campo para ruta de miniatura
 
   PhotoModel({
     required this.id,
@@ -29,6 +31,8 @@ class PhotoModel {
     this.metadata,
     this.filter,
     this.likedByUserIds = const [],
+    this.storagePath = '', // Valor por defecto
+    this.storageThumbPath = '', // Valor por defecto
   });
 
   factory PhotoModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +50,8 @@ class PhotoModel {
       metadata: json['metadata'] as Map<String, dynamic>?,
       filter: json['filter'] as Map<String, dynamic>?,
       likedByUserIds: List<String>.from(json['likedByUserIds'] ?? []),
+      storagePath: json['storagePath'] as String? ?? '',
+      storageThumbPath: json['storageThumbPath'] as String? ?? '',
     );
   }
 
@@ -64,6 +70,8 @@ class PhotoModel {
       'metadata': metadata,
       'filter': filter,
       'likedByUserIds': likedByUserIds,
+      'storagePath': storagePath,
+      'storageThumbPath': storageThumbPath,
     };
   }
 
@@ -81,6 +89,8 @@ class PhotoModel {
     Map<String, dynamic>? metadata,
     Map<String, dynamic>? filter,
     List<String>? likedByUserIds,
+    String? storagePath,
+    String? storageThumbPath,
   }) {
     return PhotoModel(
       id: id ?? this.id,
@@ -96,6 +106,8 @@ class PhotoModel {
       metadata: metadata ?? this.metadata,
       filter: filter ?? this.filter,
       likedByUserIds: likedByUserIds ?? this.likedByUserIds,
+      storagePath: storagePath ?? this.storagePath,
+      storageThumbPath: storageThumbPath ?? this.storageThumbPath,
     );
   }
 }

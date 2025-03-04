@@ -7,11 +7,13 @@ import 'package:shimmer/shimmer.dart';
 class PhotoGrid extends StatelessWidget {
   final List<PhotoModel> photos;
   final Function(int) onPhotoTap;
+  final Map<String, String> secureUrls; // Nuevo parámetro
 
   const PhotoGrid({
     Key? key,
     required this.photos,
     required this.onPhotoTap,
+    required this.secureUrls, // Añadir este parámetro
   }) : super(key: key);
 
   @override
@@ -27,6 +29,12 @@ class PhotoGrid extends StatelessWidget {
         ),
         itemCount: photos.length,
         itemBuilder: (context, index) {
+          final photo = photos[index];
+          final String key = '${photo.id}_thumb';
+          final String url = secureUrls.containsKey(key)
+              ? secureUrls[key]!
+              : photo.thumbnailUrl;
+
           return AnimationConfiguration.staggeredGrid(
             position: index,
             columnCount: 3,
@@ -34,8 +42,9 @@ class PhotoGrid extends StatelessWidget {
             child: ScaleAnimation(
               child: FadeInAnimation(
                 child: PhotoGridItem(
-                  photo: photos[index],
+                  photo: photo,
                   onTap: () => onPhotoTap(index),
+                  secureUrl: url, // Pasar URL segura
                 ),
               ),
             ),
@@ -49,11 +58,13 @@ class PhotoGrid extends StatelessWidget {
 class PhotoGridItem extends StatelessWidget {
   final PhotoModel photo;
   final VoidCallback onTap;
+  final String secureUrl; // Añadir este parámetro
 
   const PhotoGridItem({
     Key? key,
     required this.photo,
     required this.onTap,
+    required this.secureUrl, // Nuevo parámetro
   }) : super(key: key);
 
   @override
@@ -65,7 +76,7 @@ class PhotoGridItem extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: CachedNetworkImage(
-            imageUrl: photo.thumbnailUrl,
+            imageUrl: secureUrl, // Usar URL segura
             fit: BoxFit.cover,
             placeholder: (context, url) => Shimmer.fromColors(
               baseColor: Colors.grey[300]!,

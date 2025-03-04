@@ -293,6 +293,32 @@ class CameraService extends GetxService {
     }
   }
 
+  Future<Map<String, String>> uploadPhotoWithSpecificPath(
+      String photoPath, String fullPath, String thumbPath) async {
+    try {
+      print("Intentando subir con estas rutas:");
+      print("Foto: $fullPath");
+      print("Miniatura: $thumbPath");
+      // print("UID del usuario: ${_authService.userId}");
+
+      final thumbnailPath = await generateThumbnail(photoPath);
+
+      // Usar el método que crea los directorios si no existen
+      final photoUrl =
+          await _storageService.uploadPhotoToPath(photoPath, fullPath);
+      final thumbnailUrl =
+          await _storageService.uploadPhotoToPath(thumbnailPath, thumbPath);
+
+      return {
+        'photoUrl': photoUrl,
+        'thumbnailUrl': thumbnailUrl,
+      };
+    } catch (e) {
+      print('Error uploading photo with specific path: $e');
+      rethrow;
+    }
+  }
+
   /// Método de inicialización para la inyección asíncrona.
   Future<CameraService> init() async {
     await initCamera();

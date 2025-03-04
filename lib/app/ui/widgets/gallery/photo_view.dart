@@ -14,6 +14,7 @@ class PhotoView extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onShare;
   final VoidCallback onDownload;
+  final String secureUrl; // Nuevo parámetro
 
   const PhotoView({
     Key? key,
@@ -27,6 +28,7 @@ class PhotoView extends StatelessWidget {
     required this.onLike,
     required this.onShare,
     required this.onDownload,
+    required this.secureUrl, // Añadir este parámetro
   }) : super(key: key);
 
   @override
@@ -63,7 +65,7 @@ class PhotoView extends StatelessWidget {
                 minScale: 0.5,
                 maxScale: 3.0,
                 child: CachedNetworkImage(
-                  imageUrl: photo.url,
+                  imageUrl: secureUrl, // Usar URL segura
                   fit: BoxFit.contain,
                   placeholder: (context, url) => const Center(
                     child: CircularProgressIndicator(),
@@ -83,7 +85,6 @@ class PhotoView extends StatelessWidget {
             ),
           ),
         ),
-
         // Previous Button
         if (onPrevious != null)
           Positioned(
